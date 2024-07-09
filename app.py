@@ -22,7 +22,7 @@ app.config['MAIL_USE_SSL'] = True
 
 import mysql.connector
 
-connection=mysql.connector.connect(host="localhost",user="root",password="Harshi@1124",database="Railway")
+connection=mysql.connector.connect(host="localhost",user="root",password="Railway@123",database="Railway")
 cursor=connection.cursor(buffered=True)
 
 @app.route("/")
@@ -161,7 +161,7 @@ def releasegtickets():
     cursor.execute("select * from traindetails where {}=1 and trainno='{}'".format(day,trainno))
     run=cursor.fetchall()
     if (len(run)>0):
-        cursor.execute("""select * from Generalseatavailability where trainno='{}' and date='2021:10:24'""".format(trainno))
+        cursor.execute("""select * from Generalseatavailability where trainno='{}' and date='2024:06:23'""".format(trainno))
         x=cursor.fetchall()
         x=list(x)
         for i in range(len(x)):
@@ -201,7 +201,7 @@ def releasettickets():
     cursor.execute("select * from traindetails where {}=1 and trainno='{}'".format(day,trainno))
     run=cursor.fetchall()
     if (len(run)>0):
-        cursor.execute("""select * from Tatkalseatavailability where trainno='{}' and date='2021:10:24'""".format(trainno))
+        cursor.execute("""select * from Tatkalseatavailability where trainno='{}' and date='2024:06:23'""".format(trainno))
         x=cursor.fetchall()
         x=list(x)
         for i in range(len(x)):
