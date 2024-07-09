@@ -435,5 +435,304 @@ def search():
                 else:
                     return render_template("search.html",c = y,z=stations,x=x,r=r,w=w,o=o,t=t)
 
+@app.route('/selecttrains')
+def Text():
+    cursor.execute("Select * from station")
+    z=cursor.fetchall()
+    return render_template('search.html',z=z)
+
+@app.route("/npass/<trainno>/<price>/<category>/<seats>")
+def npass(trainno,price,category,seats):
+    session['trainno'] = trainno
+    session['price']= price
+    session['category']=category
+    session['seats']=seats
+    return render_template('passengers.html')
+
+@app.route("/npass1",methods=["post"])
+def npass1():
+    c=request.form["tickets"]
+    session['ticketno'] = c
+    c=int(c)
+    trainno = session.get('trainno',int)
+    trainno=int(float(trainno))
+    cursor.execute("""select Traincategory from traindetails where trainno='{}'""".format(trainno))
+    z=cursor.fetchall()
+    cursor.execute("""select Foodservicetype from traincategory where category='{}'""".format(z[0][0]))
+    x=cursor.fetchall()
+    session["food"]=x[0][0]
+    return render_template('npass.html',c=c,k=x[0][0])
+
+@app.route("/pnr")
+def pnr():
+    return render_template("pnr.html")
+
+@app.route("/pnr1",methods = ['POST'])
+def pnr1():
+    PNR = request.form['PNR']
+    session['PNR'] = PNR
+    ID=session.get('ID',None)
+    cursor.execute("SELECT * from Ticket WHERE PNR = '{}'".format(PNR))
+    q = cursor.fetchall()
+    nseats = len(q)
+    session['nseats'] = nseats
+    Trainno = q[0][5]
+    Boardingstation = q[0][8]
+    Arrivalstation = q[0][10]
+    Date = q[0][12]
+    category = q[0][3]
+    type = q[0][4]
+
+    Date=Date.strftime("%Y:%m:%d")
+
+    cursor.execute("""select * from ticket where PNR='{}' and ID='{}'""".format(PNR,ID))
+    z=cursor.fetchall()
+
+    session['category'] = category
+    session['type'] = type
+    session['Trainno'] = Trainno 
+    session['Date'] = Date
+    
+    if (len(z)>0):
+        return render_template("cancel.html",PNR = PNR,nseats = nseats,Trainno = Trainno,b = Boardingstation,a = Arrivalstation,Date = Date)
+    else:
+        return render_template("pnr.html",msg="The ticket is not booked from your account.")
+    
+@app.route("/passengers", methods = ['GET','POST'])
+def passengers():
+        trainno = session.get('trainno',int)
+        trainno=int(float(trainno))
+        price= session.get('price',int)
+        price=int(float(price))
+        ticketno= session.get('ticketno',int)
+        ticketno=int(ticketno)
+        foodtype= session.get('food',str)
+        startstation = session.get('startstation',None)
+        endstation = session.get('endstation',None)
+        date = session.get('date',None)
+        trainname = session.get('trainname',None)
+        category = session.get('category',None)
+        seats = session.get('seats',None)
+        type = session.get('type',None)
+        ID = session.get('ID',None)
+
+        if category == "CC":
+            Nseats = int(seats)
+        elif category == "3A":
+            Nseats = int(seats)
+        elif category == "2A":
+            Nseats = int(seats)
+        elif category == "1A":
+            Nseats = int(seats)
+        elif category == "SL":
+            Nseats = int(seats)
+        price=price*(ticketno)
+
+        k=request.form["tickets"]
+        people = int(k)
+        name_l = []
+        age_l = []
+        sex_l = []
+        food_l= []
+        tno = []
+        seatno = []
+        for p in range(people):
+            tno.append(p+1)
+            x=""
+            y=""
+            z=""
+            t=""
+            x="name"+str(p)
+            y="age"+str(p)
+            z="sex"+str(p)
+            t="food"+str(p)
+            name = request.form[x]
+            name_l.append(name)
+            age  = request.form[y]
+            age_l.append(age)
+            sex  = request.form[z]
+            sex_l.append(sex)
+            food  = request.form[t]
+            food_l.append(food)
+            seats = int(seats)
+            seatno.append(seats)
+            seats = seats - 1
+        cursor.execute("""select * from foodservice where foodservicetype='{}'""".format(foodtype))
+        h=cursor.fetchall()
+
+        bf = time(hour=8,minute=30,second=0)
+        lunch = time(hour=13,minute=0,second=0)
+        snack = time(hour=17,minute=0,second=0)
+        dinner = time(hour=20,minute=30,second=0)
+
+        for i in range(len(food_l)):
+            if food_l[i]=="Veg":
+                cursor.execute("""select * from route where trainno='{}' and (Deptstation='{}' or Arrivalstation='{}')""".format(trainno,startstation,endstation))
+                m=cursor.fetchall()
+                print(m)
+                depttime=m[0][3]
+                deptday=m[0][4]
+                arrivaltime=m[0][6]
+                arrivalday=m[0][7]
+
+                depttime = (datetime.min + depttime).time()
+                arrivaltime = (datetime.min + arrivaltime).time()
+
+                if (deptday==arrivalday):
+                    if (depttime<bf and arrivaltime>bf):
+                        price=price+h[0][2]
+                    if (depttime<lunch and arrivaltime>lunch):
+                        price=price+h[0][4]
+                    if (depttime<snack and arrivaltime>snack):
+                        price=price+h[0][6]
+                    if (depttime<dinner and arrivaltime>dinner):
+                        price=price+h[0][7]
+                elif (deptday==arrivalday-1):
+                    if (depttime<bf):
+                        price=price+h[0][2]
+                    if (depttime<lunch):
+                        price=price+h[0][4]
+                    if (depttime<snack):
+                        price=price+h[0][6]
+                    if (depttime<dinner):
+                        price=price+h[0][7]
+                    if (arrivaltime>bf):
+                        price=price+h[0][2]
+                    if (arrivaltime>lunch):
+                        price=price+h[0][4]
+                    if (arrivaltime>snack):
+                        price=price+h[0][6]
+                    if (arrivaltime>dinner):
+                        price=price+h[0][7]
+                elif (deptday==arrivalday-2):
+                    price=price+h[0][2]+h[0][4]+h[0][6]+h[0][7]
+                    if (depttime<bf):
+                        price=price+h[0][2]
+                    if (depttime<lunch):
+                        price=price+h[0][4]
+                    if (depttime<snack):
+                        price=price+h[0][6]
+                    if (depttime<dinner):
+                        price=price+h[0][7]
+                    if (arrivaltime>bf):
+                        price=price+h[0][2]
+                    if (arrivaltime>lunch):
+                        price=price+h[0][4]
+                    if (arrivaltime>snack):
+                        price=price+h[0][6]
+                    if (arrivaltime>dinner):
+                        price=price+h[0][7]
+
+            if food_l[i]=="NVeg":
+                cursor.execute("""select * from route where trainno='{}' and (Deptstation='{}' or Arrivalstation='{}')""".format(trainno,startstation,endstation))
+                m=cursor.fetchall()
+                depttime=m[0][3]
+                deptday=m[0][4]
+                arrivaltime=m[0][6]
+                arrivalday=m[0][7]
+
+                depttime = (datetime.min + depttime).time()
+                arrivaltime = (datetime.min + arrivaltime).time()
+
+                if (deptday==arrivalday):
+                    if (depttime<bf and arrivaltime>bf):
+                        price=price+h[0][3]
+                    if (depttime<lunch and arrivaltime>lunch):
+                        price=price+h[0][5]
+                    if (depttime<snack and arrivaltime>snack):
+                        price=price+h[0][6]
+                    if (depttime<dinner and arrivaltime>dinner):
+                        price=price+h[0][8]
+                elif (deptday==arrivalday-1):
+                    if (depttime<bf):
+                        price=price+h[0][3]
+                    if (depttime<lunch):
+                        price=price+h[0][5]
+                    if (depttime<snack):
+                        price=price+h[0][6]
+                    if (depttime<dinner):
+                        price=price+h[0][8]
+                    if (arrivaltime>bf):
+                        price=price+h[0][3]
+                    if (arrivaltime>lunch):
+                        price=price+h[0][5]
+                    if (arrivaltime>snack):
+                        price=price+h[0][6]
+                    if (arrivaltime>dinner):
+                        price=price+h[0][8]
+                elif (deptday==arrivalday-2):
+                    price=price+h[0][3]+h[0][5]+h[0][6]+h[0][8]
+                    if (depttime<bf):
+                        price=price+h[0][3]
+                    if (depttime<lunch):
+                        price=price+h[0][5]
+                    if (depttime<snack):
+                        price=price+h[0][6]
+                    if (depttime<dinner):
+                        price=price+h[0][8]
+                    if (arrivaltime>bf):
+                        price=price+h[0][3]
+                    if (arrivaltime>lunch):
+                        price=price+h[0][5]
+                    if (arrivaltime>snack):
+                        price=price+h[0][6]
+                    if (arrivaltime>dinner):
+                        price=price+h[0][8]
+        
+        seats=[]
+        id=[]
+
+        cursor.execute("""select PNR from ticket""")
+        n=cursor.fetchall()
+        z=len(n)
+
+        if (z==0):
+            PNR=1
+        else:
+            PNR=(n[z-1][0])
+            PNR=PNR+1
+
+        for i in range(people):
+            cursor.execute("""INSERT INTO Passengerdetails(Id,Name,Gender,Foodtype,Age) VALUES('{}','{}','{}','{}','{}')""".format(ID,name_l[i],sex_l[i],food_l[i],age_l[i]))
+            connection.commit()
+            cursor.execute("""select passengerId from passengerdetails where passengerid = (select max(passengerid) from passengerdetails where Id='{}')""".format(ID))
+            f=cursor.fetchone()
+            id.append(f[0])
+            seats.append(Nseats)
+            Nseats=Nseats-1
+        if type == "General" and category == "CC":
+            cursor.execute("""UPDATE Generalseatavailability SET CCseats = '{}' where trainno='{}' and date='{}'""".format(Nseats,trainno,date))
+            connection.commit()
+        if type == "General" and category == "3A":
+            cursor.execute("""UPDATE Generalseatavailability SET 3Aseats = '{}' where trainno='{}' and date='{}'""".format(Nseats,trainno,date))
+            connection.commit()
+        if type == "General" and category == "2A":
+            cursor.execute("""UPDATE Generalseatavailability SET 2Aseats = '{}' where trainno='{}' and date='{}'""".format(Nseats,trainno,date))
+            connection.commit()
+        if type == "General" and category == "SL":
+            cursor.execute("""UPDATE Generalseatavailability SET SLseats = '{}' where trainno='{}' and date='{}'""".format(Nseats,trainno,date))
+            connection.commit()
+        if type == "General" and category == "1A":
+            cursor.execute("""UPDATE Generalseatavailability SET 1Aseats = '{}' where trainno='{}' and date='{}'""".format(Nseats,trainno,date))
+            connection.commit()
+        if type == "Tatkal" and category == "CC":
+            cursor.execute("""UPDATE Tatkalseatavailability SET CCseats = '{}' where trainno='{}' and date='{}'""".format(Nseats,trainno,date))
+            connection.commit()
+        if type == "Tatkal" and category == "3A":
+            cursor.execute("""UPDATE Tatkalseatavailability SET 3Aseats = '{}' where trainno='{}' and date='{}'""".format(Nseats,trainno,date))
+            connection.commit()
+        if type == "Tatkal" and category == "2A":
+            cursor.execute("""UPDATE Tatkalseatavailability SET 2Aseats = '{}' where trainno='{}' and date='{}'""".format(Nseats,trainno,date))
+            connection.commit()
+        if type == "Tatkal" and category == "SL":
+            cursor.execute("""UPDATE Tatkalseatavailability SET SLseats = '{}' where trainno='{}' and date='{}'""".format(Nseats,trainno,date))
+            connection.commit()
+        if type == "Tatkal" and category == "1A":
+            cursor.execute("""UPDATE Tatkalseatavailability SET 1Aseats = '{}' where trainno='{}' and date='{}'""".format(Nseats,trainno,date))
+            connection.commit()
+        for i in range(len(seats)):
+            cursor.execute("""Insert into ticket values ('{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}')""".format(PNR,id[i],ID,category,type,trainno,"CNF",seats[i],startstation,depttime,endstation,arrivaltime,date,price))
+            connection.commit()
+
 if __name__ == "__main__":
     app.run(debug=False)
